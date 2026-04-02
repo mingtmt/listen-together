@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import YouTube, { type YouTubeProps } from 'react-youtube';
-import { Play, Pause, SkipForward, Volume2, VolumeX, ListMusic, FastForward, Rewind } from 'lucide-react';
+import YouTube from 'react-youtube';
+import { Play, Pause, SkipForward, Volume2, VolumeX, ListMusic, FastForward, Rewind, Users } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
 import { extractVideoId } from '../utils';
+
+const socket: Socket = io('http://localhost:3000', { autoConnect: false });
 
 export default function AudioPlayer() {
   const [inputLink, setInputLink] = useState('');
@@ -10,9 +13,44 @@ export default function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
-  const [progress, setProgress] = useState(0); // Phần trăm 0-100
+  const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [player, setPlayer] = useState<any>(null);
+  const [roomId, setRoomId] = useState('');
+  const [isInRoom, setIsInRoom] = useState(false);
+
+  useEffect(() => {
+    socket.on('userJoined', (id) => {
+      console.log('Có người mới vào phòng:', id);
+    });
+
+    socket.on('play', () => {
+      if (player) {
+        player.playVideo();
+        setIsPlaying(true);
+      }
+    });
+
+    socket.on('pause', () => {
+      if (player) {
+        player.pauseVideo();
+        setIsPlaying(false);
+      }
+    });
+
+    socket.on('seek', (time: number) => {
+      if (player) {
+        player.seekTo(time, true);
+      }
+    });
+
+    return () => {
+      socket.off('userJoined');
+      socket.off('play');
+      socket.off('pause');
+      socket.off('seek');
+    };
+  }, [player]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -26,6 +64,14 @@ export default function AudioPlayer() {
     return () => clearInterval(interval);
   }, [player, isPlaying]);
 
+  const handleJoinRoom = () => {
+    if (roomId.trim() !== '') {
+      socket.connect();
+      socket.emit('joinRoom', roomId);
+      setIsInRoom(true);
+    }
+  };
+
   const handleAddMusic = () => {
     const id = extractVideoId(inputLink);
     if (id) {
@@ -36,16 +82,26 @@ export default function AudioPlayer() {
 
   const togglePlay = () => {
     if (!player) return;
-    if (isPlaying) player.pauseVideo();
-    else player.playVideo();
+    if (isPlaying) {
+      player.pauseVideo();
+      if (isInRoom) socket.emit('pause', roomId);
+    } else {
+      player.playVideo();
+      if (isInRoom) socket.emit('play', roomId);
+    }
     setIsPlaying(!isPlaying);
   };
 
+  // Cập nhật hàm Seek: Vừa tua ở máy mình, vừa báo cho Server
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newProgress = parseFloat(e.target.value);
     const newTime = (newProgress / 100) * duration;
     player.seekTo(newTime, true);
     setProgress(newProgress);
+    
+    if (isInRoom) {
+      socket.emit('seek', { roomId, time: newTime });
+    }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,33 +117,66 @@ export default function AudioPlayer() {
     }
   };
 
-  const fastForward = () => player.seekTo(player.getCurrentTime() + 10, true);
-  const rewind = () => player.seekTo(player.getCurrentTime() - 10, true);
+  const fastForward = () => {
+    const newTime = player.getCurrentTime() + 10;
+    player.seekTo(newTime, true);
+    if (isInRoom) socket.emit('seek', { roomId, time: newTime });
+  };
+  
+  const rewind = () => {
+    const newTime = player.getCurrentTime() - 10;
+    player.seekTo(newTime, true);
+    if (isInRoom) socket.emit('seek', { roomId, time: newTime });
+  };
 
   return (
-    <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-md font-sans">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-        <span>🎧</span> Phòng nghe nhạc
-      </h2>
-      
-      {/* URL Input */}
-      <div className="flex gap-2 mb-6">
-        <input 
-          type="text" 
-          placeholder="Dán link YouTube (VD: https://youtu.be/...)" 
-          value={inputLink}
-          onChange={(e) => setInputLink(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button 
-          onClick={handleAddMusic} 
-          className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
-        >
-          Tải nhạc
-        </button>
-      </div>
+    <div className="max-w-2xl mx-auto mt-10 p-8 bg-slate-900 text-white rounded-3xl shadow-2xl border border-slate-800">
+      <div className="flex flex-col gap-6">
+        
+        {/* Room section */}
+        {!isInRoom ? (
+          <div className="flex gap-3 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+            <input 
+              type="text" 
+              placeholder="Nhập mã phòng (VD: room123)..." 
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+              className="flex-1 px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+            <button 
+              onClick={handleJoinRoom}
+              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold flex items-center gap-2"
+            >
+              <Users size={20} /> Vào phòng
+            </button>
+          </div>
+        ) : (
+          <div className="bg-emerald-900/40 text-emerald-400 p-4 rounded-2xl border border-emerald-800/50 flex justify-between items-center">
+            <span className="font-semibold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Đang trong phòng: {roomId}
+            </span>
+          </div>
+        )}
 
-      {/* Player UI */}
+        {/* Input Section */}
+        <div className="flex gap-3">
+          <input 
+            type="text" 
+            placeholder="Dán link bài hát mới..." 
+            value={inputLink}
+            onChange={(e) => setInputLink(e.target.value)}
+            className="flex-1 px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+          />
+          <button 
+            onClick={handleAddMusic}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold transition-colors flex items-center gap-2"
+          >
+            <ListMusic size={20} /> Thêm bài
+          </button>
+        </div>
+
+        {/* Player UI */}
         <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
           <div className="text-center mb-6">
             <h3 className="text-lg font-semibold text-slate-300">
@@ -112,7 +201,6 @@ export default function AudioPlayer() {
 
           {/* Main Controls */}
           <div className="flex items-center justify-between px-4">
-            {/* Volume */}
             <div className="flex items-center gap-3 w-32">
               <button onClick={() => {
                 const mute = !isMuted;
@@ -129,7 +217,6 @@ export default function AudioPlayer() {
               />
             </div>
 
-            {/* Playback Buttons */}
             <div className="flex items-center gap-6">
               <button onClick={rewind} className="text-slate-400 hover:text-white transition"><Rewind /></button>
               <button 
@@ -141,7 +228,6 @@ export default function AudioPlayer() {
               <button onClick={fastForward} className="text-slate-400 hover:text-white transition"><FastForward /></button>
             </div>
 
-            {/* Skip Next */}
             <button 
               onClick={skipNext}
               disabled={currentIdx === playlist.length - 1}
@@ -151,20 +237,21 @@ export default function AudioPlayer() {
             </button>
           </div>
         </div>
-        
-        {/* Hidden YouTube Engine */}
-        {playlist.length > 0 && (
-          <div className="fixed -left-[9999px] opacity-0 pointer-events-none">
-            <YouTube 
-              videoId={playlist[currentIdx]}
-              opts={{ height: '0', width: '0', playerVars: { autoplay: 1 } }}
-              onReady={(e) => setPlayer(e.target)}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onEnd={skipNext}
-            />
-          </div>
-        )}
       </div>
+
+      {/* Hidden YouTube Engine */}
+      {playlist.length > 0 && (
+        <div className="fixed -left-[9999px] opacity-0 pointer-events-none">
+          <YouTube 
+            videoId={playlist[currentIdx]}
+            opts={{ height: '0', width: '0', playerVars: { autoplay: 1 } }}
+            onReady={(e) => setPlayer(e.target)}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnd={skipNext}
+          />
+        </div>
+      )}
+    </div>
   );
 }
