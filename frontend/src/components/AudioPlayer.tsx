@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import YouTube from 'react-youtube';
-import { Play, Pause, SkipForward, Volume2, VolumeX, ListMusic, FastForward, Rewind, Users } from 'lucide-react';
+import { Play, Pause, SkipForward, Volume2, VolumeX, ListMusic, FastForward, Rewind, Users, Trash2, X } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import { extractVideoId } from '../utils';
 
@@ -8,9 +8,25 @@ const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 const socket: Socket = io(SOCKET_URL, { autoConnect: false });
 
+interface VideoItem {
+  id: string;
+  title: string;
+}
+
+const fetchVideoTitle = async (videoId: string): Promise<string> => {
+  try {
+    const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`);
+    const data = await res.json();
+    return data.title || "Bài hát không xác định";
+  } catch (error) {
+    console.error("Lỗi lấy title:", error);
+    return "Bài hát không xác định";
+  }
+};
+
 export default function AudioPlayer() {
   const [inputLink, setInputLink] = useState('');
-  const [playlist, setPlaylist] = useState<string[]>([]);
+  const [playlist, setPlaylist] = useState<VideoItem[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
@@ -22,7 +38,7 @@ export default function AudioPlayer() {
   const [isInRoom, setIsInRoom] = useState(false);
 
   useEffect(() => {
-    socket.on('playlistUpdated', (newPlaylist: string[]) => {
+    socket.on('playlistUpdated', (newPlaylist: VideoItem[]) => {
       setPlaylist(newPlaylist);
     });
 
@@ -52,10 +68,25 @@ export default function AudioPlayer() {
       }, 1500);
     });
 
+    socket.on('videoRemoved', ({ newPlaylist, removedIdx }) => {
+      setPlaylist(newPlaylist);
+    
+      // Logic siêu quan trọng: Chống bị "nhảy" sai bài khi có người xoá nhạc
+      setCurrentIdx((prevIdx) => {
+        // Nếu bài bị xoá nằm TRƯỚC bài đang phát -> Phải lùi index hiện tại lại 1 bước
+        if (removedIdx < prevIdx) return prevIdx - 1;
+        // Nếu xoá trúng bài ĐANG PHÁT và nó là bài cuối cùng -> Lùi về bài trước đó
+        if (removedIdx === prevIdx && prevIdx >= newPlaylist.length) return Math.max(0, newPlaylist.length - 1);
+        // Các trường hợp khác giữ nguyên
+        return prevIdx;
+      });
+    });
+
     return () => {
       socket.off('playlistUpdated');
       socket.off('getSyncState');
       socket.off('applySyncState');
+      socket.off('videoRemoved');
     };
   }, [isPlaying, currentIdx, playlist]);
 
@@ -108,15 +139,21 @@ export default function AudioPlayer() {
     }
   };
 
-  const handleAddMusic = () => {
+  const handleAddMusic = async () => {
     const id = extractVideoId(inputLink);
     if (id) {
-      if (isInRoom) {
-        socket.emit('addVideo', { roomId, videoId: id });
-      } else {
-        setPlaylist([...playlist, id]);
-      }
+      // Tạm xoá input để UI phản hồi ngay lập tức
       setInputLink('');
+      
+      // Chờ lấy tiêu đề từ NoEmbed
+      const title = await fetchVideoTitle(id);
+      const newVideo: VideoItem = { id, title };
+
+      if (isInRoom) {
+        socket.emit('addVideo', { roomId, video: newVideo });
+      } else {
+        setPlaylist([...playlist, newVideo]);
+      }
     }
   };
 
@@ -176,10 +213,33 @@ export default function AudioPlayer() {
     if (isInRoom) socket.emit('seek', { roomId, time: newTime });
   };
 
+  const handleClearPlaylist = () => {
+    // 1. Reset state ở máy của người bấm (tuỳ chọn, vì server sẽ gửi lại `playlistUpdated` bằng rỗng)
+    setPlaylist([]);
+    setCurrentIdx(0);
+    setIsPlaying(false);
+
+    // 2. Gửi yêu cầu xoá lên Server nếu đang trong phòng
+    if (isInRoom) {
+      socket.emit('clearPlaylist', roomId);
+    }
+  };
+
+  const handleRemoveVideo = (indexToRemove: number) => {
+    if (isInRoom) {
+      socket.emit('removeVideo', { roomId, index: indexToRemove });
+    } else {
+      // Nếu đang nghe offline 1 mình
+      const newPlaylist = playlist.filter((_, idx) => idx !== indexToRemove);
+      setPlaylist(newPlaylist);
+      if (indexToRemove < currentIdx) setCurrentIdx(currentIdx - 1);
+      else if (currentIdx >= newPlaylist.length) setCurrentIdx(Math.max(0, newPlaylist.length - 1));
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto mt-10 p-8 bg-slate-900 text-white rounded-3xl shadow-2xl border border-slate-800">
       <div className="flex flex-col gap-6">
-        
         {/* Room section */}
         {!isInRoom ? (
           <div className="flex gap-3 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
@@ -290,16 +350,11 @@ export default function AudioPlayer() {
       {playlist.length > 0 && (
         <div className="fixed -left-[9999px] opacity-0 pointer-events-none">
           <YouTube 
-            videoId={playlist[currentIdx]}
+            key={playlist[currentIdx]?.id}
+            videoId={playlist[currentIdx]?.id}
             opts={{ 
-              height: '10',
-              width: '10', 
-              playerVars: { 
-                autoplay: 1,
-                enablejsapi: 1,
-                origin: typeof window !== 'undefined' ? window.location.origin : '',
-                host: 'https://www.youtube.com'
-              } 
+              height: '10', width: '10', 
+              playerVars: { autoplay: 1, enablejsapi: 1, origin: window.location.origin, host: 'https://www.youtube.com' } 
             }}
             onReady={(e) => {
               playerRef.current = e.target;
@@ -312,6 +367,67 @@ export default function AudioPlayer() {
           />
         </div>
       )}
+
+      {playlist.length > 0 && (
+          <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold text-slate-300 flex items-center gap-2">
+                <ListMusic size={20} /> Danh sách chờ ({playlist.length})
+              </h3>
+              
+              {/* Nút xoá tất cả từ bài trước */}
+              <button 
+                onClick={handleClearPlaylist}
+                className="text-sm px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Trash2 size={14} /> Làm sạch
+              </button>
+            </div>
+
+            {/* Khung cuộn chứa danh sách */}
+            <div className="flex flex-col gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+              {playlist.map((item, idx) => (
+                <div 
+                  key={`${item.id}-${idx}`} 
+                  className={`group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 ${
+                    idx === currentIdx 
+                      ? 'bg-indigo-600/20 border border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.1)]' 
+                      : 'bg-slate-800 hover:bg-slate-700 border border-transparent'
+                  }`}
+                >
+                  {/* Lấy Thumbnail tự động từ YouTube Server */}
+                  <div className="relative w-20 h-14 shrink-0 rounded-md overflow-hidden bg-slate-900">
+                    <img 
+                      src={`https://img.youtube.com/vi/${item.id}/mqdefault.jpg`} 
+                      alt="thumbnail" 
+                      className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                    />
+                    {idx === currentIdx && isPlaying && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full bg-indigo-500 animate-ping"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium truncate ${idx === currentIdx ? 'text-indigo-400' : 'text-slate-200'}`} title={item.title}>
+                      {item.title} 
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1 truncate">ID: {item.id}</p>
+                  </div>
+
+                  <button 
+                    onClick={() => handleRemoveVideo(idx)}
+                    className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
+                    title="Xoá bài này"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
     </div>
   );
 }

@@ -9,6 +9,11 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+interface VideoItem {
+  id: string;
+  title: string;
+}
+
 @WebSocketGateway({
   cors: {
     origin: '*', 
@@ -18,7 +23,7 @@ import { Server, Socket } from 'socket.io';
 export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
-  private roomPlaylists = new Map<string, string[]>();
+  private roomPlaylists = new Map<string, VideoItem[]>();
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
@@ -42,11 +47,11 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('addVideo')
-  handleAddVideo(@MessageBody() data: { roomId: string; videoId: string }) {
-    const { roomId, videoId } = data;
+  handleAddVideo(@MessageBody() data: { roomId: string; video: VideoItem }) {
+    const { roomId, video } = data;
 
     const playlist = this.roomPlaylists.get(roomId) || [];
-    playlist.push(videoId);
+    playlist.push(video);
 
     this.roomPlaylists.set(roomId, playlist);
     this.server.to(roomId).emit('playlistUpdated', playlist);
@@ -90,5 +95,34 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ) {
     client.to(data.roomId).emit('seek', data.time);
+  }
+
+  @SubscribeMessage('clearPlaylist')
+  handleClearPlaylist(
+    @MessageBody() roomId: string,
+  ) {
+    this.roomPlaylists.set(roomId, []);
+
+    this.server.to(roomId).emit('playlistUpdated', []);
+  }
+
+  @SubscribeMessage('removeVideo')
+  handleRemoveVideo(
+    @MessageBody() data: { roomId: string; index: number },
+  ) {
+    const { roomId, index } = data;
+    const playlist = this.roomPlaylists.get(roomId) || [];
+
+    if (index >= 0 && index < playlist.length) {
+      // Cắt bỏ bài hát tại vị trí index
+      playlist.splice(index, 1);
+      this.roomPlaylists.set(roomId, playlist);
+      
+      // Phát sự kiện 'videoRemoved' chứa cả playlist mới và vị trí vừa xoá
+      this.server.to(roomId).emit('videoRemoved', { 
+        newPlaylist: playlist, 
+        removedIdx: index 
+      });
+    }
   }
 }
