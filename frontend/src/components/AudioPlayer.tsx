@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import YouTube from 'react-youtube';
 import { Play, Pause, SkipForward, Volume2, VolumeX, ListMusic, FastForward, Rewind, Users } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
@@ -15,88 +15,128 @@ export default function AudioPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [player, setPlayer] = useState<any>(null);
+  const playerRef = useRef<any>(null);
   const [roomId, setRoomId] = useState('');
   const [isInRoom, setIsInRoom] = useState(false);
 
   useEffect(() => {
-    socket.on('userJoined', (id) => {
-      console.log('Có người mới vào phòng:', id);
+    socket.on('playlistUpdated', (newPlaylist: string[]) => {
+      setPlaylist(newPlaylist);
     });
 
+    socket.on('getSyncState', (requesterId: string) => {
+      if (playerRef.current) {
+        const state = {
+          currentTime: playerRef.current.getCurrentTime(),
+          isPlaying: isPlaying,
+          currentIdx: currentIdx,
+          playlist: playlist
+        };
+        socket.emit('sendSyncState', { toUserId: requesterId, state });
+      }
+    });
+
+    socket.on('applySyncState', (state: any) => {
+      setPlaylist(state.playlist);
+      setCurrentIdx(state.currentIdx);
+      setIsPlaying(state.isPlaying);
+      
+      setTimeout(() => {
+        if (playerRef.current) {
+          playerRef.current.seekTo(state.currentTime, true);
+          if (state.isPlaying) playerRef.current.playVideo();
+          else playerRef.current.pauseVideo();
+        }
+      }, 1500);
+    });
+
+    return () => {
+      socket.off('playlistUpdated');
+      socket.off('getSyncState');
+      socket.off('applySyncState');
+    };
+  }, [isPlaying, currentIdx, playlist]);
+
+  useEffect(() => {
     socket.on('play', () => {
-      if (player) {
-        player.playVideo();
+      if (playerRef.current) {
+        playerRef.current.playVideo();
         setIsPlaying(true);
       }
     });
 
     socket.on('pause', () => {
-      if (player) {
-        player.pauseVideo();
+      if (playerRef.current) {
+        playerRef.current.pauseVideo();
         setIsPlaying(false);
       }
     });
 
     socket.on('seek', (time: number) => {
-      if (player) {
-        player.seekTo(time, true);
+      if (playerRef.current) {
+        playerRef.current.seekTo(time, true);
       }
     });
 
     return () => {
-      socket.off('userJoined');
       socket.off('play');
       socket.off('pause');
       socket.off('seek');
     };
-  }, [player]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (player && isPlaying) {
-        const currentTime = player.getCurrentTime();
-        const totalTime = player.getDuration();
+      if (playerRef.current && isPlaying) {
+        const currentTime = playerRef.current.getCurrentTime();
+        const totalTime = playerRef.current.getDuration();
         setDuration(totalTime);
         setProgress((currentTime / totalTime) * 100);
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [player, isPlaying]);
+  }, [isPlaying]);
 
   const handleJoinRoom = () => {
     if (roomId.trim() !== '') {
       socket.connect();
       socket.emit('joinRoom', roomId);
       setIsInRoom(true);
+      socket.emit('requestSync', roomId);
     }
   };
 
   const handleAddMusic = () => {
     const id = extractVideoId(inputLink);
     if (id) {
-      setPlaylist([...playlist, id]);
+      if (isInRoom) {
+        socket.emit('addVideo', { roomId, videoId: id });
+      } else {
+        setPlaylist([...playlist, id]);
+      }
       setInputLink('');
     }
   };
 
   const togglePlay = () => {
-    if (!player) return;
+    if (!playerRef.current) return;
     if (isPlaying) {
-      player.pauseVideo();
+      playerRef.current.pauseVideo();
       if (isInRoom) socket.emit('pause', roomId);
     } else {
-      player.playVideo();
+      playerRef.current.playVideo();
       if (isInRoom) socket.emit('play', roomId);
     }
     setIsPlaying(!isPlaying);
   };
 
-  // Cập nhật hàm Seek: Vừa tua ở máy mình, vừa báo cho Server
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newProgress = parseFloat(e.target.value);
     const newTime = (newProgress / 100) * duration;
-    player.seekTo(newTime, true);
+    
+    if (playerRef.current) {
+      playerRef.current.seekTo(newTime, true);
+    }
     setProgress(newProgress);
     
     if (isInRoom) {
@@ -107,25 +147,30 @@ export default function AudioPlayer() {
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVol = parseInt(e.target.value);
     setVolume(newVol);
-    player.setVolume(newVol);
+    if (playerRef.current) {
+      playerRef.current.setVolume(newVol);
+    }
     if (newVol > 0) setIsMuted(false);
   };
 
   const skipNext = () => {
     if (currentIdx < playlist.length - 1) {
       setCurrentIdx(currentIdx + 1);
+      // TODO: Gửi sự kiện nextTrack lên server ở đây
     }
   };
 
   const fastForward = () => {
-    const newTime = player.getCurrentTime() + 10;
-    player.seekTo(newTime, true);
+    if (!playerRef.current) return;
+    const newTime = playerRef.current.getCurrentTime() + 10;
+    playerRef.current.seekTo(newTime, true);
     if (isInRoom) socket.emit('seek', { roomId, time: newTime });
   };
   
   const rewind = () => {
-    const newTime = player.getCurrentTime() - 10;
-    player.seekTo(newTime, true);
+    if (!playerRef.current) return;
+    const newTime = playerRef.current.getCurrentTime() - 10;
+    playerRef.current.seekTo(newTime, true);
     if (isInRoom) socket.emit('seek', { roomId, time: newTime });
   };
 
@@ -205,7 +250,7 @@ export default function AudioPlayer() {
               <button onClick={() => {
                 const mute = !isMuted;
                 setIsMuted(mute);
-                player.setVolume(mute ? 0 : volume);
+                playerRef.current.setVolume(mute ? 0 : volume);
               }}>
                 {isMuted || volume === 0 ? <VolumeX size={20}/> : <Volume2 size={20}/>}
               </button>
@@ -245,7 +290,11 @@ export default function AudioPlayer() {
           <YouTube 
             videoId={playlist[currentIdx]}
             opts={{ height: '0', width: '0', playerVars: { autoplay: 1 } }}
-            onReady={(e) => setPlayer(e.target)}
+            onReady={(e) => {
+              playerRef.current = e.target; // Lưu reference ngay khi Iframe sẵn sàng
+              // Khôi phục mức âm lượng khi đổi bài
+              e.target.setVolume(isMuted ? 0 : volume);
+            }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onEnd={skipNext}

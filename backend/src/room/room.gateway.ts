@@ -18,6 +18,7 @@ import { Server, Socket } from 'socket.io';
 export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
+  private roomPlaylists = new Map<string, string[]>();
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
@@ -33,16 +34,45 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ) {
     client.join(roomId);
-    console.log(`Client ${client.id} joined room: ${roomId}`);
-    
+
+    const currentPlaylist = this.roomPlaylists.get(roomId) || [];
+    client.emit('playlistUpdated', currentPlaylist);
+
     client.to(roomId).emit('userJoined', client.id);
   }
 
-  @SubscribeMessage('play')
-  handlePlay(
+  @SubscribeMessage('addVideo')
+  handleAddVideo(@MessageBody() data: { roomId: string; videoId: string }) {
+    const { roomId, videoId } = data;
+
+    const playlist = this.roomPlaylists.get(roomId) || [];
+    playlist.push(videoId);
+
+    this.roomPlaylists.set(roomId, playlist);
+    this.server.to(roomId).emit('playlistUpdated', playlist);
+  }
+
+  @SubscribeMessage('requestSync')
+  handleRequestSync(
     @MessageBody() roomId: string,
     @ConnectedSocket() client: Socket,
   ) {
+    const room = this.server.sockets.adapter.rooms.get(roomId);
+    if (room && room.size > 1) {
+      const clients = Array.from(room);
+      const hostId = clients[0];
+
+      this.server.to(hostId).emit('getSyncState', client.id);
+    }
+  }
+
+  @SubscribeMessage('sendSyncState')
+  handleSendSync(@MessageBody() data: { toUserId: string; state: any }) {
+    this.server.to(data.toUserId).emit('applySyncState', data.state);
+  }
+
+  @SubscribeMessage('play')
+  handlePlay(@MessageBody() roomId: string, @ConnectedSocket() client: Socket) {
     client.to(roomId).emit('play');
   }
 
