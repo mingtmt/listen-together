@@ -291,15 +291,24 @@ export default function AudioPlayer() {
         <div className="fixed -left-[9999px] opacity-0 pointer-events-none">
           <YouTube 
             videoId={playlist[currentIdx]}
-            opts={{ height: '0', width: '0', playerVars: { autoplay: 1 } }}
+            opts={{ 
+              height: '10',
+              width: '10', 
+              playerVars: { 
+                autoplay: 1,
+                enablejsapi: 1,
+                origin: typeof window !== 'undefined' ? window.location.origin : '',
+                host: 'https://www.youtube.com'
+              } 
+            }}
             onReady={(e) => {
-              playerRef.current = e.target; // Lưu reference ngay khi Iframe sẵn sàng
-              // Khôi phục mức âm lượng khi đổi bài
+              playerRef.current = e.target;
               e.target.setVolume(isMuted ? 0 : volume);
             }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onEnd={skipNext}
+            onError={(e) => console.error("YouTube Error:", e.data)}
           />
         </div>
       )}
