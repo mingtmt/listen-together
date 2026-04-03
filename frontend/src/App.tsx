@@ -1,4 +1,3 @@
-import React from 'react'
 import AudioPlayer from './components/AudioPlayer'
 
 function App() {

@@ -4,7 +4,9 @@ import { Play, Pause, SkipForward, Volume2, VolumeX, ListMusic, FastForward, Rew
 import { io, Socket } from 'socket.io-client';
 import { extractVideoId } from '../utils';
 
-const socket: Socket = io('http://localhost:3000', { autoConnect: false });
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
+const socket: Socket = io(SOCKET_URL, { autoConnect: false });
 
 export default function AudioPlayer() {
   const [inputLink, setInputLink] = useState('');
