@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': './src',
-    }
+    },
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
   }
 });
