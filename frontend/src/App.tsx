@@ -1,11 +1,17 @@
-import AudioPlayer from './components/AudioPlayer';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import MainLayout from '@/layouts/MainLayout';
+import Home from '@/pages/Home';
+import RoomPage from '@/pages/RoomPage';
 
-function App() {
+export default function App() {
   return (
-    <>
-      <AudioPlayer />
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path='/' element={<MainLayout />}>
+          <Route index element={<Home />} />
+          <Route path='room/:id' element={<RoomPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;

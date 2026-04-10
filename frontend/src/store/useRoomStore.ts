@@ -18,7 +18,7 @@ interface RoomState {
   setIsPlaying: (status: boolean) => void;
   setVolume: (vol: number) => void;
   setIsMuted: (status: boolean) => void;
-  
+
   resetRoom: () => void;
 }
 
@@ -34,20 +34,25 @@ export const useRoomStore = create<RoomState>((set) => ({
   setRoomId: (id) => set({ roomId: id }),
   setIsInRoom: (status) => set({ isInRoom: status }),
   setPlaylist: (playlist) => set({ playlist }),
-  
-  setCurrentIdx: (idxOrUpdater) => set((state) => ({
-    currentIdx: typeof idxOrUpdater === 'function' ? idxOrUpdater(state.currentIdx) : idxOrUpdater
-  })),
-  
+
+  setCurrentIdx: (idxOrUpdater) =>
+    set((state) => ({
+      currentIdx:
+        typeof idxOrUpdater === 'function'
+          ? idxOrUpdater(state.currentIdx)
+          : idxOrUpdater,
+    })),
+
   setIsPlaying: (status) => set({ isPlaying: status }),
   setVolume: (vol) => set({ volume: vol }),
   setIsMuted: (status) => set({ isMuted: status }),
 
-  resetRoom: () => set({
-    roomId: '',
-    isInRoom: false,
-    playlist: [],
-    currentIdx: 0,
-    isPlaying: false
-  })
+  resetRoom: () =>
+    set({
+      roomId: '',
+      isInRoom: false,
+      playlist: [],
+      currentIdx: 0,
+      isPlaying: false,
+    }),
 }));

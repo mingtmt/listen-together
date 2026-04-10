@@ -1,4 +1,4 @@
-import { Users, PlayCircle, Hash } from 'lucide-react';
+import { Users, PlayCircle } from 'lucide-react';
 
 interface RoomData {
   id: string;
@@ -7,11 +7,25 @@ interface RoomData {
   nowPlaying?: string;
 }
 
-// Dữ liệu giả để test UI trước khi có Backend Database
 const MOCK_ROOMS: RoomData[] = [
-  { id: 'CHILL01', name: 'Nhạc Lofi Phê Pha', activeUsers: 12, nowPlaying: 'Lofi Hip Hop Radio 24/7' },
-  { id: 'EDM99', name: 'Vinahouse Cực Mạnh', activeUsers: 5, nowPlaying: 'Nonstop 2026' },
-  { id: 'STUDY', name: 'Phòng Tự Học', activeUsers: 34, nowPlaying: 'Piano Focus' },
+  {
+    id: 'CHILL01',
+    name: 'Nhạc Lofi Phê Pha',
+    activeUsers: 12,
+    nowPlaying: 'Lofi Hip Hop Radio 24/7',
+  },
+  {
+    id: 'EDM99',
+    name: 'Vinahouse Cực Mạnh',
+    activeUsers: 5,
+    nowPlaying: 'Nonstop 2026',
+  },
+  {
+    id: 'STUDY',
+    name: 'Phòng Tự Học',
+    activeUsers: 34,
+    nowPlaying: 'Piano Focus',
+  },
 ];
 
 interface RoomListProps {
@@ -20,39 +34,46 @@ interface RoomListProps {
 
 export default function RoomList({ onJoinRoom }: RoomListProps) {
   return (
-    <div className="mt-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-slate-300">Phòng nổi bật</h3>
-        <span className="text-xs font-medium text-slate-500 bg-slate-800 px-2 py-1 rounded-md">
+    <div className='bg-[#151B2B] p-6 rounded-[24px] shadow-lg text-white'>
+      {/* Header */}
+      <div className='flex justify-between items-center mb-6'>
+        <h3 className='text-lg font-bold text-white'>Phòng nổi bật</h3>
+        <span className='text-xs bg-[#1E293B] px-3 py-1.5 rounded-lg text-slate-400 font-medium'>
           {MOCK_ROOMS.length} phòng đang mở
         </span>
       </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      {/* List Items */}
+      <div className='flex flex-col gap-4'>
         {MOCK_ROOMS.map((room) => (
-          <div 
+          <div
             key={room.id}
             onClick={() => onJoinRoom(room.id)}
-            className="bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700 hover:border-indigo-500/50 p-5 rounded-2xl cursor-pointer transition-all duration-200 group flex flex-col justify-between h-full"
+            className='group flex items-center justify-between p-4 bg-[#1E293B] hover:bg-[#2A3B54] rounded-2xl cursor-pointer transition-all duration-200'
           >
-            <div>
-              <div className="flex justify-between items-start mb-3">
-                <h4 className="font-bold text-slate-200 group-hover:text-indigo-400 transition-colors line-clamp-1">
+            {/* Info Left */}
+            <div className='flex items-center gap-4 overflow-hidden'>
+              <div className='w-12 h-12 shrink-0 rounded-full bg-[#151B2B] flex items-center justify-center text-indigo-500 group-hover:bg-indigo-400 group-hover:text-white transition-colors'>
+                <PlayCircle size={24} />
+              </div>
+              <div className='min-w-0'>
+                <h4 className='font-bold text-white text-base truncate'>
                   {room.name}
                 </h4>
-                <span className="flex items-center gap-1 text-xs font-semibold bg-slate-900 px-2 py-1 rounded-md text-emerald-400 border border-emerald-900/30 shrink-0 ml-2">
-                  <Users size={12} /> {room.activeUsers}
-                </span>
-              </div>
-              
-              <div className="text-sm text-slate-400 flex items-center gap-2">
-                <PlayCircle size={14} className="text-indigo-400/70 shrink-0" />
-                <span className="truncate">{room.nowPlaying || 'Đang không phát nhạc'}</span>
+                <p className='text-sm text-slate-400 mt-0.5 truncate'>
+                  {room.nowPlaying || 'Đang không phát nhạc'}
+                </p>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-1 text-xs text-slate-500 font-mono bg-slate-900/50 w-fit px-2 py-1 rounded">
-              <Hash size={12} /> {room.id}
+            {/* Badges Right */}
+            <div className='flex flex-col items-end gap-2 shrink-0 ml-3'>
+              <span className='flex items-center gap-1 text-xs font-bold bg-[#14362A] text-[#34D399] px-2.5 py-1 rounded-md'>
+                <Users size={12} /> {room.activeUsers}
+              </span>
+              <span className='text-xs text-slate-500 font-mono tracking-wider'>
+                #{room.id}
+              </span>
             </div>
           </div>
         ))}
