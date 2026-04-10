@@ -13,9 +13,9 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { fetchVideoTitle } from '../api/youtube';
-import { extractVideoId } from '../utils';
-import { useRoomSocket, type VideoItem } from '../hooks/useRoomSocket';
+import { fetchVideoTitle } from '@/api/youtube';
+import { extractVideoId } from '@/utils';
+import { useRoomSocket, type VideoItem } from '@/hooks/useRoomSocket';
 
 export default function AudioPlayer() {
   const [inputLink, setInputLink] = useState('');
