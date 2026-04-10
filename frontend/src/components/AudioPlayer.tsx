@@ -9,36 +9,40 @@ import {
   ListMusic,
   FastForward,
   Rewind,
-  Users,
   Trash2,
   X,
 } from 'lucide-react';
 import { fetchVideoTitle } from '@/api/youtube';
 import { extractVideoId } from '@/utils';
-import { useRoomSocket, type VideoItem } from '@/hooks/useRoomSocket';
+import { useRoomSocket } from '@/hooks/useRoomSocket';
+import { useRoomStore } from '@/store/useRoomStore';
+import RoomControl from './RoomControl';
+import { type VideoItem } from '@/types';
 
 export default function AudioPlayer() {
   const [inputLink, setInputLink] = useState('');
-  const [playlist, setPlaylist] = useState<VideoItem[]>([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(50);
-  const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const playerRef = useRef<any>(null);
-  const [roomId, setRoomId] = useState('');
-  const [isInRoom, setIsInRoom] = useState(false);
 
-  const { socket } = useRoomSocket({
-    playerRef,
-    playlist,
-    setPlaylist,
-    currentIdx,
-    setCurrentIdx,
-    isPlaying,
-    setIsPlaying,
-  });
+  const roomId = useRoomStore((state) => state.roomId);
+  const setRoomId = useRoomStore((state) => state.setRoomId);
+  const isInRoom = useRoomStore((state) => state.isInRoom);
+  const setIsInRoom = useRoomStore((state) => state.setIsInRoom);
+
+  const playlist = useRoomStore((state) => state.playlist);
+  const setPlaylist = useRoomStore((state) => state.setPlaylist);
+  const currentIdx = useRoomStore((state) => state.currentIdx);
+  const setCurrentIdx = useRoomStore((state) => state.setCurrentIdx);
+
+  const isPlaying = useRoomStore((state) => state.isPlaying);
+  const setIsPlaying = useRoomStore((state) => state.setIsPlaying);
+  const volume = useRoomStore((state) => state.volume);
+  const setVolume = useRoomStore((state) => state.setVolume);
+  const isMuted = useRoomStore((state) => state.isMuted);
+  const setIsMuted = useRoomStore((state) => state.setIsMuted);
+
+  const { socket } = useRoomSocket({ playerRef });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -159,30 +163,12 @@ export default function AudioPlayer() {
     <div className='max-w-2xl mx-auto mt-10 p-8 bg-slate-900 text-white rounded-3xl shadow-2xl border border-slate-800'>
       <div className='flex flex-col gap-6'>
         {/* Room section */}
-        {!isInRoom ? (
-          <div className='flex gap-3 bg-slate-800/50 p-4 rounded-2xl border border-slate-700'>
-            <input
-              type='text'
-              placeholder='Nhập mã phòng (VD: room123)...'
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-              className='flex-1 px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none'
-            />
-            <button
-              onClick={handleJoinRoom}
-              className='px-6 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold flex items-center gap-2'
-            >
-              <Users size={20} /> Vào phòng
-            </button>
-          </div>
-        ) : (
-          <div className='bg-emerald-900/40 text-emerald-400 p-4 rounded-2xl border border-emerald-800/50 flex justify-between items-center'>
-            <span className='font-semibold flex items-center gap-2'>
-              <span className='w-2 h-2 rounded-full bg-emerald-500 animate-pulse'></span>
-              Đang trong phòng: {roomId}
-            </span>
-          </div>
-        )}
+        <RoomControl
+          isInRoom={isInRoom}
+          roomId={roomId}
+          setRoomId={setRoomId}
+          handleJoinRoom={handleJoinRoom}
+        />
 
         {/* Input Section */}
         <div className='flex gap-3'>
