@@ -1,27 +1,114 @@
-import { ListMusic } from 'lucide-react';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { PlayCircle, Plus, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { useRoomStore } from '@/store/useRoomStore';
+import { roomApi } from '@/api/roomApi';
 
 export default function Home() {
+  const [roomName, setRoomName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  
+  const navigate = useNavigate();
   const resetRoom = useRoomStore((state) => state.resetRoom);
 
   useEffect(() => {
     resetRoom();
   }, [resetRoom]);
 
+  const handleCreateRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roomName.trim() || isLoading) return;
+
+    setIsLoading(true);
+    setErrorMsg('');
+
+    try {
+      const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      await roomApi.createRoom({
+        roomId: newRoomId,
+        name: roomName,
+      });
+
+      navigate(`/room/${newRoomId}`);
+      
+    } catch (error: any) {
+      console.error('Error creating room:', error);
+      const backendMessage = error.response?.data?.message;
+      setErrorMsg(backendMessage || 'Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className='hidden lg:flex flex-1 items-center justify-center min-h-[600px] border-[3px] border-dashed border-slate-300/70 rounded-[32px] bg-slate-100/50 text-slate-500'>
-      <div className='text-center flex flex-col items-center'>
-        <div className='w-20 h-20 bg-slate-200/80 rounded-full flex items-center justify-center mb-5 shadow-sm'>
-          <ListMusic size={36} className='text-slate-500' />
+    <div className='flex flex-col items-center justify-center min-h-[600px] bg-white rounded-[32px] shadow-sm border border-slate-200 p-8 sm:p-12 animate-fade-in'>
+      
+      <div className='flex flex-col items-center text-center max-w-md'>
+        <div className='w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-6 shadow-sm border border-indigo-100'>
+          <PlayCircle size={40} className="ml-1" />
         </div>
-        <p className='text-2xl font-bold mb-2 text-slate-700'>
-          Khu vực phát nhạc
-        </p>
-        <p className='text-base text-slate-500 max-w-sm'>
-          Hãy tạo hoặc tham gia một phòng ở cột bên trái để bắt đầu
+        
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 text-xs font-bold mb-4 uppercase tracking-wider">
+          <Sparkles size={14} /> Trải nghiệm hoàn toàn mới
+        </div>
+
+        <h2 className='text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight'>
+          Bắt đầu bữa tiệc âm nhạc của bạn
+        </h2>
+        
+        <p className='text-base text-slate-500 mb-10'>
+          Tạo phòng ngay để cùng bạn bè nghe nhạc, đồng bộ thời gian thực và quản lý danh sách phát chung một cách dễ dàng.
         </p>
       </div>
+
+      <form onSubmit={handleCreateRoom} className='w-full max-w-md flex flex-col gap-4'>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="roomName" className="text-sm font-bold text-slate-700 ml-1">
+            Tên phòng của bạn
+          </label>
+          <input
+            id="roomName"
+            type='text'
+            placeholder='VD: Góc Chill Của Khoa...'
+            value={roomName}
+            onChange={(e) => setRoomName(e.target.value)}
+            disabled={isLoading}
+            autoFocus
+            className='w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-lg text-slate-800 placeholder:text-slate-400 transition-all shadow-inner disabled:opacity-50'
+          />
+        </div>
+
+        {/* Khối hiển thị lỗi nếu có */}
+        {errorMsg && (
+          <div className="flex items-center gap-2 text-red-500 bg-red-50 px-4 py-3 rounded-xl text-sm font-medium border border-red-100">
+            <AlertCircle size={18} shrink-0 />
+            {errorMsg}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={!roomName.trim() || isLoading}
+          className='w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 rounded-2xl font-bold text-white text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 hover:-translate-y-0.5 relative'
+        >
+          {isLoading ? (
+            <>
+              <Loader2 size={24} className="animate-spin" /> Đang tạo phòng...
+            </>
+          ) : (
+            <>
+              <Plus size={24} /> Tạo phòng ngay
+            </>
+          )}
+        </button>
+      </form>
+
+      <p className="mt-8 text-sm text-slate-400">
+        Hoặc tham gia phòng đã có bằng cách nhập mã ở cột bên trái
+      </p>
+
     </div>
   );
 }
