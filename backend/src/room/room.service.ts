@@ -64,17 +64,21 @@ export class RoomService {
     return room;
   }
 
-  async removeVideo(roomId: string, videoId: string): Promise<Room> {
-    const room = await this.roomModel.findOneAndUpdate(
-      { roomId },
-      { $pull: { playlist: { id: videoId } } },
-      { new: true },
-    );
-    
+  async removeVideo(roomId: string, index: number): Promise<Room> {
+    const room = await this.roomModel.findOne({ roomId });
     if (!room) {
       throw new NotFoundException(`Room not found: ${roomId}`);
     }
     
-    return room;
+    room.playlist.splice(index, 1);
+
+  
+    if (index < room.currentIdx) {
+      room.currentIdx -= 1;
+    } else if (index === room.currentIdx) {
+      room.isPlaying = false; 
+    }
+
+    return room.save();
   }
 }

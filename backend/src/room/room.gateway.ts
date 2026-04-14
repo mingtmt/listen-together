@@ -107,10 +107,13 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('removeVideo')
-  async handleRemoveVideo(@MessageBody() data: { roomId: string; videoId: string }) {
-    const { roomId, videoId } = data;
-    const updatedRoom = await this.roomService.removeVideo(roomId, videoId)
+  async handleRemoveVideo(@MessageBody() data: { roomId: string; index: number }) {
+    const updatedRoom = await this.roomService.removeVideo(data.roomId, data.index);
 
-    this.server.to(roomId).emit('playlistUpdated', updatedRoom.playlist);
+    this.server.to(data.roomId).emit('roomUpdated', {
+      playlist: updatedRoom.playlist,
+      currentIdx: updatedRoom.currentIdx,
+      isPlaying: updatedRoom.isPlaying,
+    });
   }
 }

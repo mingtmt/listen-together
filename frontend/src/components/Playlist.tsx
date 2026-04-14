@@ -26,14 +26,14 @@ export default function Playlist() {
 
   const handleRemoveVideo = (indexToRemove: number) => {
     if (isInRoom) {
-      socket.emit('removeVideo', { roomId, index: indexToRemove });
-    } else {
-      const newPlaylist = playlist.filter((_, idx) => idx !== indexToRemove);
-      setPlaylist(newPlaylist);
-      if (indexToRemove < currentIdx) setCurrentIdx(currentIdx - 1);
-      else if (currentIdx >= newPlaylist.length)
-        setCurrentIdx(Math.max(0, newPlaylist.length - 1));
-    }
+    socket.emit('removeVideo', { 
+      roomId, 
+      index: indexToRemove 
+    });
+  } else {
+    const newPlaylist = playlist.filter((_, idx) => idx !== indexToRemove);
+    setPlaylist(newPlaylist);
+  }
   };
 
   if (playlist.length === 0) return null;

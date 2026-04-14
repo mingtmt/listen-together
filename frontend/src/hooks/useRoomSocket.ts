@@ -53,24 +53,11 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
       });
     });
 
-    socket.on('videoRemoved', ({ newPlaylist, removedIdx }) => {
-      const store = useRoomStore.getState();
-      store.setPlaylist(newPlaylist);
-
-      store.setCurrentIdx((prevIdx) => {
-        if (removedIdx < prevIdx) return prevIdx - 1;
-        if (removedIdx === prevIdx && prevIdx >= newPlaylist.length)
-          return Math.max(0, newPlaylist.length - 1);
-        return prevIdx;
-      });
-    });
-
     return () => {
       socket.off('playlistUpdated');
       socket.off('getSyncState');
       socket.off('applySyncState');
       socket.off('roomUpdated');
-      socket.off('videoRemoved');
     };
   }, [playerRef]);
 
