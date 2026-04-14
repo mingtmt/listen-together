@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useRoomStore } from '@/store/useRoomStore';
-import { type VideoItem } from '@/types';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 export const socket: Socket = io(SOCKET_URL, { autoConnect: false });
@@ -46,6 +45,14 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
       }, 1500);
     });
 
+    socket.on('roomUpdated', (data) => {
+      useRoomStore.setState({
+        playlist: data.playlist,
+        currentIdx: data.currentIdx,
+        isPlaying: data.isPlaying,
+      });
+    });
+
     socket.on('videoRemoved', ({ newPlaylist, removedIdx }) => {
       const store = useRoomStore.getState();
       store.setPlaylist(newPlaylist);
@@ -62,11 +69,11 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
       socket.off('playlistUpdated');
       socket.off('getSyncState');
       socket.off('applySyncState');
+      socket.off('roomUpdated');
       socket.off('videoRemoved');
     };
-  }, [playerRef]); // Dependency array giờ đây trống trơn (ngoại trừ ref), ko lo bị re-render thừa!
+  }, [playerRef]);
 
-  // 2. Lắng nghe các sự kiện Play/Pause/Seek
   useEffect(() => {
     socket.on('play', () => {
       if (playerRef.current) {

@@ -20,7 +20,7 @@ export default function Playlist() {
     setIsPlaying(false);
 
     if (isInRoom) {
-      socket.emit('clearPlaylist', roomId);
+      socket.emit('clearPlaylist', { roomId });
     }
   };
 

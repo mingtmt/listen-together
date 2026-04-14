@@ -43,4 +43,38 @@ export class RoomService {
     
     return room;
   }
+
+  async clearPlaylist(roomId: string): Promise<Room> {
+    const room = await this.roomModel.findOneAndUpdate(
+      { roomId },
+      { 
+        $set: { 
+          playlist: [], 
+          currentIdx: 0, 
+          isPlaying: false 
+        } 
+      },
+      { new: true }
+    );
+
+    if (!room) {
+      throw new NotFoundException(`Room not found: ${roomId}`);
+    }
+
+    return room;
+  }
+
+  async removeVideo(roomId: string, videoId: string): Promise<Room> {
+    const room = await this.roomModel.findOneAndUpdate(
+      { roomId },
+      { $pull: { playlist: { id: videoId } } },
+      { new: true },
+    );
+    
+    if (!room) {
+      throw new NotFoundException(`Room not found: ${roomId}`);
+    }
+    
+    return room;
+  }
 }

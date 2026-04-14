@@ -96,31 +96,21 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('clearPlaylist')
-  handleClearPlaylist(
-    @MessageBody() roomId: string,
-  ) {
-    this.roomPlaylists.set(roomId, []);
+  async handleClearPlaylist(@MessageBody() data: { roomId: string }) {
+    const updatedRoom = await this.roomService.clearPlaylist(data.roomId);
 
-    this.server.to(roomId).emit('playlistUpdated', []);
+    this.server.to(data.roomId).emit('roomUpdated', {
+      playlist: updatedRoom.playlist,
+      currentIdx: updatedRoom.currentIdx,
+      isPlaying: updatedRoom.isPlaying,
+    });
   }
 
   @SubscribeMessage('removeVideo')
-  handleRemoveVideo(
-    @MessageBody() data: { roomId: string; index: number },
-  ) {
-    const { roomId, index } = data;
-    const playlist = this.roomPlaylists.get(roomId) || [];
+  async handleRemoveVideo(@MessageBody() data: { roomId: string; videoId: string }) {
+    const { roomId, videoId } = data;
+    const updatedRoom = await this.roomService.removeVideo(roomId, videoId)
 
-    if (index >= 0 && index < playlist.length) {
-      // Cắt bỏ bài hát tại vị trí index
-      playlist.splice(index, 1);
-      this.roomPlaylists.set(roomId, playlist);
-      
-      // Phát sự kiện 'videoRemoved' chứa cả playlist mới và vị trí vừa xoá
-      this.server.to(roomId).emit('videoRemoved', { 
-        newPlaylist: playlist, 
-        removedIdx: index 
-      });
-    }
+    this.server.to(roomId).emit('playlistUpdated', updatedRoom.playlist);
   }
 }
