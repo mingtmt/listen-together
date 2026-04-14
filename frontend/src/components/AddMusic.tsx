@@ -1,33 +1,34 @@
-// src/components/AddMusic.tsx
 import { useState } from 'react';
-import { ListMusic } from 'lucide-react';
+import { ListMusic, Loader2 } from 'lucide-react';
 import { fetchVideoTitle } from '@/api/youtube';
 import { extractVideoId } from '@/utils';
 import { useRoomStore } from '@/store/useRoomStore';
-import { socket } from '@/hooks/useRoomSocket'; // Import thẳng socket
-import { type VideoItem } from '@/types';
+import { socket } from '@/hooks/useRoomSocket';
 
 export default function AddMusic() {
   const [inputLink, setInputLink] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
 
   const roomId = useRoomStore((state) => state.roomId);
-  const isInRoom = useRoomStore((state) => state.isInRoom);
-  const playlist = useRoomStore((state) => state.playlist);
-  const setPlaylist = useRoomStore((state) => state.setPlaylist);
 
   const handleAddMusic = async () => {
-    const id = extractVideoId(inputLink);
-    if (id) {
+    const videoId = extractVideoId(inputLink);
+    if (!videoId || isAdding) return;
+
+    setIsAdding(true);
+    try {
+      const title = await fetchVideoTitle(videoId);
+      
+      socket.emit('addVideo', {
+        roomId,
+        video: { id: videoId, title }
+      });
+
       setInputLink('');
-
-      const title = await fetchVideoTitle(id);
-      const newVideo: VideoItem = { id, title };
-
-      if (isInRoom) {
-        socket.emit('addVideo', { roomId, video: newVideo });
-      } else {
-        setPlaylist([...playlist, newVideo]);
-      }
+    } catch (error) {
+      console.error("Add music error:", error);
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -50,7 +51,8 @@ export default function AddMusic() {
           disabled={!inputLink.trim()}
           className='px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-medium text-sm flex items-center gap-2 transition'
         >
-          <ListMusic size={18} /> Thêm
+          {isAdding ? <Loader2 size={18} className="animate-spin" /> : <ListMusic size={18} />}
+          Thêm
         </button>
       </div>
     </div>

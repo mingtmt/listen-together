@@ -18,4 +18,9 @@ export class RoomController {
   async getRoom(@Param('id') id: string) {
     return this.roomService.getRoom(id);
   }
+
+  @Get()
+  async getAllRooms() {
+    return this.roomService.getAllRooms();
+  }
 }

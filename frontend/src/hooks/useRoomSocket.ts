@@ -11,9 +11,11 @@ interface UseRoomSocketParams {
 }
 
 export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
+  const setPlaylist = useRoomStore((state) => state.setPlaylist);
+
   useEffect(() => {
-    socket.on('playlistUpdated', (newPlaylist: VideoItem[]) => {
-      useRoomStore.getState().setPlaylist(newPlaylist);
+    socket.on('playlistUpdated', (newPlaylist) => {
+      setPlaylist(newPlaylist);
     });
 
     socket.on('getSyncState', (requesterId: string) => {

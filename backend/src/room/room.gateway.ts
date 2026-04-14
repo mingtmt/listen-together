@@ -8,6 +8,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { RoomService } from './room.service';
 
 interface VideoItem {
   id: string;
@@ -23,6 +24,9 @@ interface VideoItem {
 export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
+
+  constructor(private readonly roomService: RoomService) {}
+
   private roomPlaylists = new Map<string, VideoItem[]>();
 
   handleConnection(client: Socket) {
@@ -40,21 +44,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     client.join(roomId);
 
-    const currentPlaylist = this.roomPlaylists.get(roomId) || [];
-    client.emit('playlistUpdated', currentPlaylist);
-
     client.to(roomId).emit('userJoined', client.id);
   }
 
   @SubscribeMessage('addVideo')
-  handleAddVideo(@MessageBody() data: { roomId: string; video: VideoItem }) {
+  async handleAddVideo(@MessageBody() data: { roomId: string; video: VideoItem }) {
     const { roomId, video } = data;
+    const updatedRoom = await this.roomService.addVideo(roomId, video);
 
-    const playlist = this.roomPlaylists.get(roomId) || [];
-    playlist.push(video);
-
-    this.roomPlaylists.set(roomId, playlist);
-    this.server.to(roomId).emit('playlistUpdated', playlist);
+    this.server.to(roomId).emit('playlistUpdated', updatedRoom.playlist);
   }
 
   @SubscribeMessage('requestSync')

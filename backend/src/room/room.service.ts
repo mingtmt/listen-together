@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Room } from './room.schema';
+import { Room, VideoItem } from './room.schema';
 
 @Injectable()
 export class RoomService {
@@ -19,6 +19,24 @@ export class RoomService {
   async getRoom(roomId: string): Promise<Room> {
     const room = await this.roomModel.findOne({ roomId }).exec();
 
+    if (!room) {
+      throw new NotFoundException(`Room not found: ${roomId}`);
+    }
+    
+    return room;
+  }
+
+  async getAllRooms(): Promise<Room[]> {
+    return this.roomModel.find().sort({ createdAt: -1 }).exec();
+  }
+
+  async addVideo(roomId: string, video: VideoItem): Promise<Room> {
+    const room = await this.roomModel.findOneAndUpdate(
+      { roomId },
+      { $push: { playlist: video } },
+      { new: true },
+    );
+    
     if (!room) {
       throw new NotFoundException(`Room not found: ${roomId}`);
     }
