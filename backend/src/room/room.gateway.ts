@@ -45,6 +45,14 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.to(roomId).emit('userJoined', client.id);
   }
 
+  @SubscribeMessage('leaveRoom')
+  handleLeaveRoom(
+    @MessageBody() roomId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.leave(roomId);
+  }
+
   @SubscribeMessage('addVideo')
   async handleAddVideo(@MessageBody() data: { roomId: string; video: VideoItem }) {
     const { roomId, video } = data;

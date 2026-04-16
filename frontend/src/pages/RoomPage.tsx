@@ -16,14 +16,19 @@ export default function RoomPage() {
       setIsInRoom(true);
 
       socket.connect();
-      socket.emit('joinRoom', id);
-      socket.emit('requestSync', id);
+
+      socket.on('connect', () => {
+        socket.emit('joinRoom', id);
+        socket.emit('requestSync', id);
+      });
     }
 
     return () => {
-      // socket.emit('leaveRoom', id);
+      socket.emit('leaveRoom', id);
+      socket.off('connect');
+      socket.disconnect();
     };
-  }, [id, setRoomId, setIsInRoom]);
+  }, [id]);
 
   return (
     <div className='w-full h-full'>
