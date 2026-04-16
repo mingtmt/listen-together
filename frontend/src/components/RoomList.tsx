@@ -1,4 +1,4 @@
-import { Users, PlayCircle, Loader2, AlertCircle } from 'lucide-react';
+import { PlayCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { roomApi } from '@/api/roomApi';
 
