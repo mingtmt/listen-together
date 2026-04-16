@@ -34,7 +34,7 @@ export class RoomService {
     const room = await this.roomModel.findOneAndUpdate(
       { roomId },
       { $push: { playlist: video } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     
     if (!room) {
@@ -54,7 +54,7 @@ export class RoomService {
           isPlaying: false 
         } 
       },
-      { new: true }
+      { returnDocument: 'after' },
     );
 
     if (!room) {

@@ -27,8 +27,6 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(private readonly roomService: RoomService) {}
 
-  private roomPlaylists = new Map<string, VideoItem[]>();
-
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
   }
@@ -56,10 +54,14 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('requestSync')
-  handleRequestSync(
+  async handleRequestSync(
     @MessageBody() roomId: string,
     @ConnectedSocket() client: Socket,
   ) {
+    const roomData = await this.roomService.getRoom(roomId);
+
+    client.emit('applyRoomState', roomData);
+
     const room = this.server.sockets.adapter.rooms.get(roomId);
     if (room && room.size > 1) {
       const clients = Array.from(room);

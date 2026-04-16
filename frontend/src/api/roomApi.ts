@@ -1,19 +1,5 @@
 import axiosClient from './axiosClient';
-
-export interface CreateRoomPayload {
-  roomId: string;
-  name: string;
-}
-
-export interface RoomData {
-  _id: string;
-  roomId: string;
-  name: string;
-  playlist: { id: string; title: string }[];
-  currentIdx: number;
-  isPlaying: boolean;
-  createdAt: string;
-}
+import type { CreateRoomPayload, RoomData } from '@/types';
 
 export const roomApi = {
   createRoom: (data: CreateRoomPayload) => {

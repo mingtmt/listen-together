@@ -9,6 +9,7 @@ export default function RoomEntry({ handleJoinRoom }: RoomEntryProps) {
   const isInRoom = useRoomStore((state) => state.isInRoom);
   const roomId = useRoomStore((state) => state.roomId);
   const setRoomId = useRoomStore((state) => state.setRoomId);
+  const roomName = useRoomStore((state) => state.roomName);
 
   return (
     <>
@@ -43,7 +44,7 @@ export default function RoomEntry({ handleJoinRoom }: RoomEntryProps) {
             <span className='w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse'></span>
             Đang trong phòng:
             <span className='font-mono bg-emerald-900/10 px-2 py-0.5 rounded-md'>
-              {roomId}
+              {roomName}
             </span>
           </span>
         </div>

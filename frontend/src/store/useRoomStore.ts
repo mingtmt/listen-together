@@ -4,6 +4,7 @@ import { type VideoItem } from '@/types';
 
 interface RoomState {
   roomId: string;
+  roomName: string;
   isInRoom: boolean;
   playlist: VideoItem[];
   currentIdx: number;
@@ -24,6 +25,7 @@ interface RoomState {
 
 export const useRoomStore = create<RoomState>((set) => ({
   roomId: '',
+  roomName: '',
   isInRoom: false,
   playlist: [],
   currentIdx: 0,
@@ -50,6 +52,7 @@ export const useRoomStore = create<RoomState>((set) => ({
   resetRoom: () =>
     set({
       roomId: '',
+      roomName: '',
       isInRoom: false,
       playlist: [],
       currentIdx: 0,
