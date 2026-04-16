@@ -78,9 +78,9 @@ export default function RoomList({ onJoinRoom }: RoomListProps) {
 
                 {/* Badges Right */}
                 <div className="flex flex-col items-end gap-2 shrink-0 ml-3">
-                  <span className="flex items-center gap-1 text-xs font-bold bg-[#14362A] text-[#34D399] px-2.5 py-1 rounded-md" title="Số lượng bài hát">
+                  {/* <span className="flex items-center gap-1 text-xs font-bold bg-[#14362A] text-[#34D399] px-2.5 py-1 rounded-md" title="Số lượng bài hát">
                     <Users size={12} /> {room.playlist.length > 0 ? room.playlist.length : 1}
-                  </span>
+                  </span> */}
                   <span className="text-xs text-slate-500 font-mono tracking-wider">#{room.roomId}</span>
                 </div>
               </div>

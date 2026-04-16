@@ -8,6 +8,9 @@ import {
   VolumeX,
   FastForward,
   Rewind,
+  Repeat, 
+  Repeat1, 
+  Shuffle,
 } from 'lucide-react';
 import { useRoomSocket } from '@/hooks/useRoomSocket';
 import { useRoomStore } from '@/store/useRoomStore';
@@ -29,6 +32,10 @@ export default function AudioPlayer() {
   const setVolume = useRoomStore((state) => state.setVolume);
   const isMuted = useRoomStore((state) => state.isMuted);
   const setIsMuted = useRoomStore((state) => state.setIsMuted);
+  const loopMode = useRoomStore((state) => state.loopMode);
+  const setLoopMode = useRoomStore((state) => state.setLoopMode);
+  const isShuffle = useRoomStore((state) => state.isShuffle);
+  const setIsShuffle = useRoomStore((state) => state.setIsShuffle);
 
   const { socket } = useRoomSocket({ playerRef });
 
@@ -43,6 +50,23 @@ export default function AudioPlayer() {
     }, 1000);
     return () => clearInterval(interval);
   }, [isPlaying]);
+
+  const getNextIndex = () => {
+    if (isShuffle) {
+      let nextIdx;
+      do {
+        nextIdx = Math.floor(Math.random() * playlist.length);
+      } while (nextIdx === currentIdx && playlist.length > 1);
+      return nextIdx;
+    }
+
+    if (currentIdx < playlist.length - 1) {
+      return currentIdx + 1;
+    } else if (loopMode === 'all') {
+      return 0;
+    }
+    return null;
+  };
 
   const togglePlay = () => {
     if (!playerRef.current) return;
@@ -72,7 +96,12 @@ export default function AudioPlayer() {
   };
 
   const skipNext = () => {
-    if (currentIdx < playlist.length - 1) setCurrentIdx(currentIdx + 1);
+    const nextIdx = getNextIndex();
+    if (nextIdx !== null) {
+      setCurrentIdx(nextIdx);
+    } else {
+      setIsPlaying(false);
+    }
   };
 
   const fastForward = () => {
@@ -87,6 +116,21 @@ export default function AudioPlayer() {
     const newTime = playerRef.current.getCurrentTime() - 10;
     playerRef.current.seekTo(newTime, true);
     if (isInRoom) socket.emit('seek', { roomId, time: newTime });
+  };
+
+  const handleOnEnd = () => {
+    if (loopMode === 'one') {
+      playerRef.current.seekTo(0);
+      playerRef.current.playVideo();
+    } else {
+      skipNext();
+    }
+  };
+
+  const toggleLoop = () => {
+    const modes: ('none' | 'all' | 'one')[] = ['none', 'all', 'one'];
+    const nextMode = modes[(modes.indexOf(loopMode) + 1) % modes.length];
+    setLoopMode(nextMode);
   };
 
   return (
@@ -121,6 +165,13 @@ export default function AudioPlayer() {
 
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-4 w-32 sm:w-40 mx-2'>
+            <button
+              onClick={() => setIsShuffle(!isShuffle)}
+              className={`transition-colors ${isShuffle ? 'text-indigo-500' : 'text-slate-400 hover:text-white'}`}
+              title="Trộn bài"
+            >
+              <Shuffle size={20} />
+            </button>
             <button
               onClick={() => {
                 const mute = !isMuted;
@@ -176,13 +227,21 @@ export default function AudioPlayer() {
             </button>
           </div>
 
-          <div className='w-32 sm:w-40 flex justify-end'>
+          <div className='w-40 flex items-center justify-end gap-4'>
             <button
               onClick={skipNext}
-              disabled={currentIdx === playlist.length - 1}
+              disabled={currentIdx === playlist.length - 1 && loopMode === 'none'}
               className='text-slate-400 hover:text-white disabled:opacity-30 hover:scale-110 transition-all'
             >
               <SkipForward size={28} />
+            </button>
+
+            <button
+              onClick={toggleLoop}
+              className={`transition-colors ${loopMode !== 'none' ? 'text-indigo-500' : 'text-slate-400 hover:text-white'}`}
+              title="Lặp lại"
+            >
+              {loopMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
             </button>
           </div>
         </div>
@@ -203,13 +262,13 @@ export default function AudioPlayer() {
                 host: 'https://www.youtube.com',
               },
             }}
+            onEnd={handleOnEnd}
             onReady={(e) => {
               playerRef.current = e.target;
               e.target.setVolume(isMuted ? 0 : volume);
             }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
-            onEnd={skipNext}
           />
         </div>
       )}
