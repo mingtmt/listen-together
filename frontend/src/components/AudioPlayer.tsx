@@ -70,14 +70,18 @@ export default function AudioPlayer() {
 
   const togglePlay = () => {
     if (!playerRef.current) return;
-    if (isPlaying) {
-      playerRef.current.pauseVideo();
-      if (isInRoom) socket.emit('pause', roomId);
+    const nextIsPlaying = !isPlaying;
+
+    if (isInRoom) {
+      socket.emit(nextIsPlaying ? 'play' : 'pause', { 
+        roomId, 
+        index: currentIdx
+      });
     } else {
-      playerRef.current.playVideo();
-      if (isInRoom) socket.emit('play', roomId, currentIdx);
+      if (nextIsPlaying) playerRef.current.playVideo();
+      else playerRef.current.pauseVideo();
+      setIsPlaying(nextIsPlaying);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,9 +102,15 @@ export default function AudioPlayer() {
   const skipNext = () => {
     const nextIdx = getNextIndex();
     if (nextIdx !== null) {
-      setCurrentIdx(nextIdx);
+      if (isInRoom) {
+        socket.emit('changeVideo', { roomId, index: nextIdx });
+      } else {
+        setCurrentIdx(nextIdx);
+        setIsPlaying(true);
+      }
     } else {
-      setIsPlaying(false);
+      if (isInRoom) socket.emit('pause', { roomId });
+      else setIsPlaying(false);
     }
   };
 

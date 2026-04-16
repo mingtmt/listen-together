@@ -86,22 +86,22 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('play')
   async handlePlay(
-    @MessageBody() roomId: string, index: number, 
-    @ConnectedSocket() client: Socket
+    @MessageBody() data: {roomId: string, index: number},
   ) {
+    const { roomId, index } = data;
     await this.roomService.updateRoomStatus(roomId, { currentIdx: index, isPlaying: true });
 
-    client.to(roomId).emit('play');
+    this.server.to(roomId).emit('play');
   }
 
   @SubscribeMessage('pause')
   async handlePause(
-    @MessageBody() roomId: string, index: number,
-    @ConnectedSocket() client: Socket,
+    @MessageBody() data: {roomId: string, index: number},
   ) {
+    const { roomId, index } = data;
     await this.roomService.updateRoomStatus(roomId, { currentIdx: index, isPlaying: false });
 
-    client.to(roomId).emit('pause');
+    this.server.to(roomId).emit('pause');
   }
 
   @SubscribeMessage('seek')

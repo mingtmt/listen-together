@@ -12,28 +12,33 @@ interface UseRoomSocketParams {
 
 export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
   useEffect(() => {
-    socket.on('playlistUpdated', (newPlaylist) => {
-      useRoomStore.setState({
-        playlist: newPlaylist,
-      });
-    });
-
-    socket.on('applyRoomState', (room: RoomData) => {
+    const handleRoomUpdate = (room: RoomData) => {
       useRoomStore.setState({
         roomName: room.name,
         playlist: room.playlist,
         currentIdx: room.currentIdx,
         isPlaying: room.isPlaying,
       });
-    });
+
+      // Điều khiển Player dựa trên dữ liệu mới nhất từ DB
+      if (playerRef.current) {
+        if (room.isPlaying) {
+          playerRef.current.playVideo();
+        } else {
+          playerRef.current.pauseVideo();
+        }
+      }
+    };
+
+    socket.on('applyRoomState', handleRoomUpdate);
+    socket.on('roomUpdated', handleRoomUpdate);
 
     socket.on('getSyncState', (requesterId: string) => {
       if (playerRef.current) {
-        const currentState = useRoomStore.getState();
         const state = {
           currentTime: playerRef.current.getCurrentTime(),
-          isPlaying: currentState.isPlaying,
-          currentIdx: currentState.currentIdx,
+          isPlaying: useRoomStore.getState().isPlaying,
+          currentIdx: useRoomStore.getState().currentIdx,
         };
         socket.emit('sendSyncState', { toUserId: requesterId, state });
       }
@@ -51,30 +56,18 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
         if (playerRef.current && typeof playerRef.current.getDuration === 'function' && playerRef.current.getDuration() > 0) {
           clearInterval(checkPlayerInterval);
           playerRef.current.seekTo(state.currentTime, true);
-          if (state.isPlaying) {
-             playerRef.current.playVideo();
-          } else {
-             playerRef.current.pauseVideo();
-          }
+          if (state.isPlaying) playerRef.current.playVideo();
+          else playerRef.current.pauseVideo();
         }
         if (attempts > 50) clearInterval(checkPlayerInterval); 
       }, 100);
     });
 
-    socket.on('roomUpdated', (room: RoomData) => {
-      useRoomStore.setState({
-        playlist: room.playlist,
-        currentIdx: room.currentIdx,
-        isPlaying: room.isPlaying,
-      });
-    });
-
     return () => {
-      socket.off('playlistUpdated');
       socket.off('applyRoomState');
+      socket.off('roomUpdated');
       socket.off('getSyncState');
       socket.off('applySyncState');
-      socket.off('roomUpdated');
     };
   }, [playerRef]);
 
@@ -82,14 +75,14 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
     socket.on('play', () => {
       if (playerRef.current) {
         playerRef.current.playVideo();
-        useRoomStore.getState().setIsPlaying(true);
+        useRoomStore.setState({ isPlaying: true });
       }
     });
 
     socket.on('pause', () => {
       if (playerRef.current) {
         playerRef.current.pauseVideo();
-        useRoomStore.getState().setIsPlaying(false);
+        useRoomStore.setState({ isPlaying: false });
       }
     });
 
