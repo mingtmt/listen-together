@@ -61,11 +61,11 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
       }, 100);
     });
 
-    socket.on('roomUpdated', (data) => {
+    socket.on('roomUpdated', (room: RoomData) => {
       useRoomStore.setState({
-        playlist: data.playlist,
-        currentIdx: data.currentIdx,
-        isPlaying: data.isPlaying,
+        playlist: room.playlist,
+        currentIdx: room.currentIdx,
+        isPlaying: room.isPlaying,
       });
     });
 

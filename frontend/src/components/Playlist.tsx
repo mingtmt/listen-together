@@ -36,6 +36,18 @@ export default function Playlist() {
   }
   };
 
+  const handleSelectVideo = (index: number) => {
+    setCurrentIdx(index);
+    setIsPlaying(true);
+
+    if (isInRoom) {
+      socket.emit('changeVideo', { 
+        roomId, 
+        index 
+      });
+    }
+  };
+
   if (playlist.length === 0) return null;
 
   return (
@@ -57,6 +69,7 @@ export default function Playlist() {
         {playlist.map((item, idx) => (
           <div
             key={`${item.id}-${idx}`}
+            onClick={() => handleSelectVideo(idx)}
             className={`group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 ${
               idx === currentIdx
                 ? 'bg-indigo-600/20 border border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.1)]'
@@ -89,7 +102,10 @@ export default function Playlist() {
             </div>
 
             <button
-              onClick={() => handleRemoveVideo(idx)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveVideo(idx);
+              }}
               className='p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200'
               title='Xoá bài này'
             >

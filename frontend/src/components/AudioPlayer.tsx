@@ -51,7 +51,7 @@ export default function AudioPlayer() {
       if (isInRoom) socket.emit('pause', roomId);
     } else {
       playerRef.current.playVideo();
-      if (isInRoom) socket.emit('play', roomId);
+      if (isInRoom) socket.emit('play', roomId, currentIdx);
     }
     setIsPlaying(!isPlaying);
   };

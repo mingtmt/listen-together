@@ -77,15 +77,22 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('play')
-  handlePlay(@MessageBody() roomId: string, @ConnectedSocket() client: Socket) {
+  async handlePlay(
+    @MessageBody() roomId: string, index: number, 
+    @ConnectedSocket() client: Socket
+  ) {
+    await this.roomService.updateRoomStatus(roomId, { currentIdx: index, isPlaying: true });
+
     client.to(roomId).emit('play');
   }
 
   @SubscribeMessage('pause')
-  handlePause(
-    @MessageBody() roomId: string,
+  async handlePause(
+    @MessageBody() roomId: string, index: number,
     @ConnectedSocket() client: Socket,
   ) {
+    await this.roomService.updateRoomStatus(roomId, { currentIdx: index, isPlaying: false });
+
     client.to(roomId).emit('pause');
   }
 
@@ -117,5 +124,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
       currentIdx: updatedRoom.currentIdx,
       isPlaying: updatedRoom.isPlaying,
     });
+  }
+
+  @SubscribeMessage('changeVideo')
+  async handleChangeVideo(@MessageBody() data: { roomId: string; index: number }) {
+    const updatedRoom = await this.roomService.updateRoomStatus(data.roomId, {
+      currentIdx: data.index,
+      isPlaying: true,
+    });
+
+    this.server.to(data.roomId).emit('applyRoomState', updatedRoom);
   }
 }

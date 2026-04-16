@@ -44,6 +44,20 @@ export class RoomService {
     return room;
   }
 
+  async updateRoomStatus(roomId: string, data: { currentIdx: number; isPlaying: boolean }): Promise<Room> {
+    const room = await this.roomModel.findOneAndUpdate(
+      { roomId },
+      { $set: { ...data } },
+      { returnDocument: 'after' },
+    );
+    
+    if (!room) {
+      throw new NotFoundException(`Room not found: ${roomId}`);
+    }
+    
+    return room;
+  }
+
   async clearPlaylist(roomId: string): Promise<Room> {
     const room = await this.roomModel.findOneAndUpdate(
       { roomId },
