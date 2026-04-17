@@ -324,7 +324,7 @@ export default function AudioPlayer() {
               }
             }}
             onStateChange={(e) => {
-              if ((e.data === -1 || e.data === 3) && targetTime > 0) {
+              if ((e.data === 1 || e.data === 3) && targetTime > 0) {
                 e.target.seekTo(targetTime, true);
                 
                 if (!isPlaying) {
