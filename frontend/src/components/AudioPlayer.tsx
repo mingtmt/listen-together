@@ -26,6 +26,8 @@ export default function AudioPlayer() {
   const currentIdx = useRoomStore((state) => state.currentIdx);
   const setCurrentIdx = useRoomStore((state) => state.setCurrentIdx);
 
+  const targetTime = useRoomStore((state) => state.targetTime);
+  const setTargetTime = useRoomStore((state) => state.setTargetTime);
   const isPlaying = useRoomStore((state) => state.isPlaying);
   const setIsPlaying = useRoomStore((state) => state.setIsPlaying);
   const volume = useRoomStore((state) => state.volume);
@@ -38,6 +40,25 @@ export default function AudioPlayer() {
   const setIsShuffle = useRoomStore((state) => state.setIsShuffle);
 
   const { socket } = useRoomSocket({ playerRef });
+
+  useEffect(() => {
+    if (targetTime > 0 && playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
+      const state = playerRef.current.getPlayerState();
+      
+      if (state === 1 || state === 2) {
+        playerRef.current.seekTo(targetTime, true);
+        if (isPlaying) playerRef.current.playVideo();
+        setTargetTime(0);
+      }
+    }
+  }, [targetTime, isPlaying, setTargetTime]);
+
+  useEffect(() => {
+    if (playerRef.current) {
+      if (isPlaying) playerRef.current.playVideo();
+      else playerRef.current.pauseVideo();
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -137,10 +158,31 @@ export default function AudioPlayer() {
     }
   };
 
+  const toggleShuffle = () => {
+    if (isInRoom) {
+      socket.emit('updateRoomSettings', { 
+        roomId, 
+        isShuffle: !isShuffle 
+      });
+    } else {
+      setIsShuffle(!isShuffle);
+    }
+  };
+
   const toggleLoop = () => {
-    const modes: ('none' | 'all' | 'one')[] = ['none', 'all', 'one'];
-    const nextMode = modes[(modes.indexOf(loopMode) + 1) % modes.length];
-    setLoopMode(nextMode);
+    if (isInRoom) {
+      const modes = ['none', 'all', 'one'];
+      const nextMode = modes[(modes.indexOf(loopMode) + 1) % modes.length];
+    
+      socket.emit('updateRoomSettings', { 
+        roomId, 
+        loopMode: nextMode 
+      });
+    } else {
+      const modes = ['none', 'all', 'one'];
+      const nextMode = modes[(modes.indexOf(loopMode) + 1) % modes.length];
+      setLoopMode(nextMode);
+    }
   };
 
   return (
@@ -176,7 +218,7 @@ export default function AudioPlayer() {
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-4 w-32 sm:w-40 mx-2'>
             <button
-              onClick={() => setIsShuffle(!isShuffle)}
+              onClick={toggleShuffle}
               className={`transition-colors ${isShuffle ? 'text-indigo-500' : 'text-slate-400 hover:text-white'}`}
               title="Trộn bài"
             >
@@ -276,6 +318,21 @@ export default function AudioPlayer() {
             onReady={(e) => {
               playerRef.current = e.target;
               e.target.setVolume(isMuted ? 0 : volume);
+
+              if (!isPlaying) {
+                e.target.pauseVideo();
+              }
+            }}
+            onStateChange={(e) => {
+              if ((e.data === -1 || e.data === 3) && targetTime > 0) {
+                e.target.seekTo(targetTime, true);
+                
+                if (!isPlaying) {
+                  e.target.pauseVideo();
+                }
+
+                setTargetTime(0);
+              }
             }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}

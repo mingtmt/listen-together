@@ -15,5 +15,7 @@ export interface RoomData {
   playlist: { id: string; title: string }[];
   currentIdx: number;
   isPlaying: boolean;
+  loopMode: string;
+  isShuffle: boolean;
   createdAt: string;
 }

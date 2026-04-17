@@ -143,4 +143,13 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.server.to(data.roomId).emit('applyRoomState', updatedRoom);
   }
+
+  @SubscribeMessage('updateRoomSettings')
+  async handleUpdateSettings(@MessageBody() data: { roomId: string, loopMode?: string, isShuffle?: boolean }) {
+    const { roomId, ...settings } = data;
+  
+    const updatedRoom = await this.roomService.updateRoomStatus(roomId, settings);
+
+    this.server.to(roomId).emit('roomUpdated', updatedRoom);
+  }
 }

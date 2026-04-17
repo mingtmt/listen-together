@@ -25,6 +25,12 @@ export class Room extends Document {
 
   @Prop({ default: false })
   isPlaying!: boolean;
+
+  @Prop({ default: 'none' })
+  loopMode!: string; // 'none', 'all', 'one'
+
+  @Prop({ default: false })
+  isShuffle!: boolean;
 }
 
 export const RoomSchema = SchemaFactory.createForClass(Room);

@@ -44,10 +44,10 @@ export class RoomService {
     return room;
   }
 
-  async updateRoomStatus(roomId: string, data: { currentIdx: number; isPlaying: boolean }): Promise<Room> {
+  async updateRoomStatus(roomId: string, settings: Partial<Room>): Promise<Room> {
     const room = await this.roomModel.findOneAndUpdate(
       { roomId },
-      { $set: { ...data } },
+      { $set: { ...settings } },
       { returnDocument: 'after' },
     );
     

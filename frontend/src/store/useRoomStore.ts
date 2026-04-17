@@ -10,8 +10,9 @@ interface RoomState {
   isPlaying: boolean;
   volume: number;
   isMuted: boolean;
-  loopMode: 'none' | 'one' | 'all';
+  loopMode: string;
   isShuffle: boolean;
+  targetTime: number;
 
   setRoomId: (id: string) => void;
   setIsInRoom: (status: boolean) => void;
@@ -20,8 +21,9 @@ interface RoomState {
   setIsPlaying: (status: boolean) => void;
   setVolume: (vol: number) => void;
   setIsMuted: (status: boolean) => void;
-  setLoopMode: (mode: 'none' | 'one' | 'all') => void;
+  setLoopMode: (mode: string) => void;
   setIsShuffle: (status: boolean) => void;
+  setTargetTime: (time: number) => void;
 
   resetRoom: () => void;
 }
@@ -37,6 +39,7 @@ export const useRoomStore = create<RoomState>((set) => ({
   isMuted: false,
   loopMode: 'none',
   isShuffle: false,
+  targetTime: 0,
 
   setRoomId: (id) => set({ roomId: id }),
   setIsInRoom: (status) => set({ isInRoom: status }),
@@ -55,6 +58,7 @@ export const useRoomStore = create<RoomState>((set) => ({
   setIsMuted: (status) => set({ isMuted: status }),
   setLoopMode: (mode) => set({ loopMode: mode }),
   setIsShuffle: (status) => set({ isShuffle: status }),
+  setTargetTime: (time: number) => set({ targetTime: time }),
 
   resetRoom: () =>
     set({
@@ -66,5 +70,6 @@ export const useRoomStore = create<RoomState>((set) => ({
       isPlaying: false,
       loopMode: 'none',
       isShuffle: false,
+      targetTime: 0,
     }),
 }));

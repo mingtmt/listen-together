@@ -18,9 +18,10 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
         playlist: room.playlist,
         currentIdx: room.currentIdx,
         isPlaying: room.isPlaying,
+        loopMode: room.loopMode,
+        isShuffle: room.isShuffle
       });
 
-      // Điều khiển Player dựa trên dữ liệu mới nhất từ DB
       if (playerRef.current) {
         if (room.isPlaying) {
           playerRef.current.playVideo();
@@ -38,6 +39,8 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
         const state = {
           currentTime: playerRef.current.getCurrentTime(),
           isPlaying: useRoomStore.getState().isPlaying,
+          loopMode: useRoomStore.getState().loopMode,
+          isShuffle: useRoomStore.getState().isShuffle,
           currentIdx: useRoomStore.getState().currentIdx,
         };
         socket.emit('sendSyncState', { toUserId: requesterId, state });
@@ -48,19 +51,22 @@ export function useRoomSocket({ playerRef }: UseRoomSocketParams) {
       useRoomStore.setState({
         currentIdx: state.currentIdx,
         isPlaying: state.isPlaying,
+        loopMode: state.loopMode,
+        isShuffle: state.isShuffle,
+        targetTime: state.currentTime,
       });
 
-      let attempts = 0;
-      const checkPlayerInterval = setInterval(() => {
-        attempts++;
-        if (playerRef.current && typeof playerRef.current.getDuration === 'function' && playerRef.current.getDuration() > 0) {
-          clearInterval(checkPlayerInterval);
-          playerRef.current.seekTo(state.currentTime, true);
-          if (state.isPlaying) playerRef.current.playVideo();
-          else playerRef.current.pauseVideo();
-        }
-        if (attempts > 50) clearInterval(checkPlayerInterval); 
-      }, 100);
+      // let attempts = 0;
+      // const checkPlayerInterval = setInterval(() => {
+      //   attempts++;
+      //   if (playerRef.current && typeof playerRef.current.getDuration === 'function' && playerRef.current.getDuration() > 0) {
+      //     clearInterval(checkPlayerInterval);
+      //     playerRef.current.seekTo(state.currentTime, true);
+      //     if (state.isPlaying) playerRef.current.playVideo();
+      //     else playerRef.current.pauseVideo();
+      //   }
+      //   if (attempts > 50) clearInterval(checkPlayerInterval); 
+      // }, 100);
     });
 
     return () => {
