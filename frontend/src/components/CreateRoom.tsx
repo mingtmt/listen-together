@@ -9,20 +9,17 @@ export default function CreateRoom() {
   const navigate = useNavigate();
 
   const { mutate, isPending, isError, error } = useMutation({
-    mutationFn: (data: { roomId: string; name: string }) => roomApi.createRoom(data),
-    onSuccess: (_, variables) => {
-      navigate(`/room/${variables.roomId}`);
+    mutationFn: (payload: {name: string}) => roomApi.createRoom(payload),
+    onSuccess: (room) => {
+      navigate(`/room/${room.roomId}`);
     },
   });
 
-  const handleCreateRoom = (e: React.FormEvent) => {
+  const handleCreateRoom = (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!roomName.trim() || isPending) return;
-
-    const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
     
     mutate({
-      roomId: newRoomId,
       name: roomName,
     });
   };

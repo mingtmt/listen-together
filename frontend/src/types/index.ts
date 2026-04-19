@@ -1,10 +1,14 @@
+export interface BackendResponse<T> {
+  message: string;
+  data: T;
+}
+
 export interface VideoItem {
   id: string;
   title: string;
 }
 
 export interface CreateRoomPayload {
-  roomId: string;
   name: string;
 }
 

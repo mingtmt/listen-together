@@ -11,7 +11,7 @@ export class VideoItem {
 
 @Schema({timestamps: true})
 export class Room extends Document {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true, unique: true, index: true })
   roomId!: string;
 
   @Prop({ required: true })

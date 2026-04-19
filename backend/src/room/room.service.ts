@@ -2,17 +2,29 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Room, VideoItem } from './room.schema';
+import { generateShortId } from '../utils/string.util';
 
 @Injectable()
 export class RoomService {
   constructor(@InjectModel(Room.name) private roomModel: Model<Room>) {}
 
-  async createRoom(roomId: string, name: string): Promise<Room> {
+  async createRoom(name: string): Promise<Room> {
+    let roomId = '';
+    let isUnique = false;
+
+    while (!isUnique) {
+      roomId = generateShortId(6)
+      
+      const existingRoom = await this.roomModel.findOne({ roomId }).exec();
+      if (!existingRoom) isUnique = true;
+    }
+
     const newRoom = new this.roomModel({
       roomId,
       name,
       playlist: [],
     });
+
     return newRoom.save();
   }
 

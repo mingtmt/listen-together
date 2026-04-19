@@ -7,7 +7,7 @@ export class RoomController {
 
   @Post()
   async createRoom(@Body() body: { roomId: string; name: string }) {
-    const room = await this.roomService.createRoom(body.roomId, body.name);
+    const room = await this.roomService.createRoom(body.name);
     return {
       message: 'Tạo phòng thành công',
       data: room,
